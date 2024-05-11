@@ -4,11 +4,11 @@ import mediapipe as mp
 mp_hands = mp.solutions.hands
 hands = mp_hands.Hands()
 mp_draw = mp.solutions.drawing_utils
+
 cap = cv2.VideoCapture(0)
 
 finger_tips = [8, 12, 16, 20]
 thumb_tip = 4
-
 finger_fold_status = [False] * len(finger_tips)
 
 while True:
@@ -19,41 +19,28 @@ while True:
 
     if results.multi_hand_landmarks:
         for hand_landmark in results.multi_hand_landmarks:
-            lm_list = []
-            for id, lm in enumerate(hand_landmark.landmark):
-                lm_list.append(lm)
+            lm_list = [lm for id, lm in enumerate(hand_landmark.landmark)]
 
-            # Get the x and y positions of the fingertips
-            fingertips_pos = [lm_list[i].y * h for i in finger_tips]
-            thumb_tip_pos = lm_list[thumb_tip].y * h
+            for tip in finger_tips:
+                x, y = int(lm_list[tip].x * w), int(lm_list[tip].y * h)
+                cv2.circle(img, (x, y), 15, (255, 0, 0), cv2.FILLED)
 
-            # Check if the finger is folded or not
-            for i in range(len(finger_tips)):
-                if fingertips_pos[i] < thumb_tip_pos:
-                    finger_fold_status[i] = True
+                if lm_list[tip].x < lm_list[tip - 3].x:
+                    finger_fold_status[finger_tips.index(tip)] = True
+                    cv2.circle(img, (x, y), 15, (0, 255, 0), cv2.FILLED)
                 else:
-                    finger_fold_status[i] = False
+                    finger_fold_status[finger_tips.index(tip)] = False
 
-            # Draw circles around the fingertips
-            for i in range(len(finger_tips)):
-                cv2.circle(img, (int(lm_list[finger_tips[i]].x * w), int(lm_list[finger_tips[i]].y * h)), 10, (255, 0, 0), -1)
-
-                # Check if the finger is folded or not
-                if finger_fold_status[i]:
-                    cv2.circle(img, (int(lm_list[finger_tips[i]].x * w), int(lm_list[finger_tips[i]].y * h)), 10, (0, 255, 0), -1)
-
-            # Check if all fingers are folded
             if all(finger_fold_status):
-                # Check if the thumb is raised up or down
-                if lm_list[thumb_tip].y * h < lm_list[thumb_tip - 1].y * h:
+                if lm_list[thumb_tip].y < lm_list[thumb_tip - 1].y < lm_list[thumb_tip - 2].y:
                     print("LIKE")
-                    cv2.putText(img, "LIKE", (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-                else:
+                    cv2.putText(img, "LIKE", (20, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 3)
+                elif lm_list[thumb_tip].y > lm_list[thumb_tip - 1].y > lm_list[thumb_tip - 2].y:
                     print("DISLIKE")
-                    cv2.putText(img, "DISLIKE", (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+                    cv2.putText(img, "DISLIKE", (20, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 3)
 
     cv2.imshow("hand tracking", img)
     key = cv2.waitKey(1)
-    if key == 32: # Spacebar key
+    if key == 32:  # Spacebar key
         cv2.destroyAllWindows()
         break
